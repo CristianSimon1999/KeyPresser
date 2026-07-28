@@ -13,23 +13,32 @@ class KeyPresserGUI:
         self.root = root
 
         self.root.title("Key Presser")
-        self.root.geometry("560x900")
+        self.root.geometry("980x590")
         self.root.resizable(False, False)
 
-        # Motor
+        # ====================================================
+        # MOTOR
+        # ====================================================
+
         self.engine = KeyPresserEngine()
 
-        # Cuando el proceso objetivo se cierre,
-        # engine nos avisará mediante esta función.
         self.engine.on_process_closed = (
             self.process_closed_from_engine
         )
 
-        # Teclas disponibles.
-        self.keys = [
-            ("E", "e"),
-            ("R", "r"),
-            ("F", "f"),
+        # ====================================================
+        # TECLAS
+        # ====================================================
+
+        # Acciones principales
+        self.action_keys = [
+            ("Target (E)", "e"),
+            ("Atacar (R)", "r"),
+            ("Recoger (F)", "f"),
+        ]
+
+        # Teclas numéricas
+        self.number_keys = [
             ("1", "1"),
             ("2", "2"),
             ("3", "3"),
@@ -42,19 +51,46 @@ class KeyPresserGUI:
             ("10 (0)", "0"),
         ]
 
+        # Teclas de función
+        self.function_keys = [
+            ("F1", "f1"),
+            ("F2", "f2"),
+            ("F3", "f3"),
+            ("F4", "f4"),
+            ("F5", "f5"),
+            ("F6", "f6"),
+            ("F7", "f7"),
+            ("F8", "f8"),
+            ("F9", "f9"),
+            ("F10", "f10"),
+        ]
+
+        # Todas las teclas
+        self.keys = (
+            self.action_keys
+            + self.number_keys
+            + self.function_keys
+        )
+
+        # Variables
         self.enabled_vars = {}
         self.interval_vars = {}
         self.interval_entries = {}
 
         # Relación:
         #
-        # texto mostrado -> PID
+        # "KathanaGame.exe | PID 1234"
+        # ->
+        # 1234
         self.process_map = {}
 
+        # Crear interfaz
         self.create_interface()
 
+        # Cargar procesos
         self.refresh_processes()
 
+        # Cierre de ventana
         self.root.protocol(
             "WM_DELETE_WINDOW",
             self.close_app
@@ -68,7 +104,7 @@ class KeyPresserGUI:
 
         main = ttk.Frame(
             self.root,
-            padding=20
+            padding=15
         )
 
         main.pack(
@@ -76,273 +112,485 @@ class KeyPresserGUI:
             expand=True
         )
 
-        # ----------------------------------------------------
-        # TÍTULO
-        # ----------------------------------------------------
+        # ====================================================
+        # ESTADO
+        # ====================================================
 
-        ttk.Label(
-            main,
-            text="KEY PRESSER",
-            font=("Segoe UI", 22, "bold")
-        ).pack(
-            pady=(0, 20)
+        status_frame = ttk.Frame(
+            main
         )
 
-        # ----------------------------------------------------
+        status_frame.pack(
+            fill="x",
+            pady=(0, 10)
+        )
+
+        self.status_label = ttk.Label(
+            status_frame,
+            text="● Detenido",
+            font=("Segoe UI", 11, "bold")
+        )
+
+        self.status_label.pack(
+            anchor="w"
+        )
+
+        self.target_label = ttk.Label(
+            status_frame,
+            text="Objetivo: ninguno",
+            font=("Segoe UI", 9)
+        )
+
+        self.target_label.pack(
+            anchor="w",
+            pady=(2, 0)
+        )
+
+        # ====================================================
         # APLICACIÓN OBJETIVO
-        # ----------------------------------------------------
+        # ====================================================
 
         process_frame = ttk.LabelFrame(
             main,
             text="Aplicación objetivo",
-            padding=12
+            padding=10
         )
 
         process_frame.pack(
-            fill="x"
+            fill="x",
+            pady=(0, 10)
         )
 
+        process_frame.columnconfigure(
+            0,
+            weight=1
+        )
+
+        # Selector
         self.process_combo = ttk.Combobox(
             process_frame,
-            state="readonly",
-            width=48
+            state="readonly"
         )
 
-        self.process_combo.pack(
-            side="left",
+        self.process_combo.grid(
+            row=0,
+            column=0,
+            sticky="ew",
             padx=(0, 10)
         )
 
+        # Botón actualizar
         self.refresh_button = ttk.Button(
             process_frame,
             text="Actualizar",
             command=self.refresh_processes
         )
 
-        self.refresh_button.pack(
-            side="left"
+        self.refresh_button.grid(
+            row=0,
+            column=1
         )
 
-        # ----------------------------------------------------
-        # MODO
-        # ----------------------------------------------------
-
-        mode_frame = ttk.LabelFrame(
-            main,
-            text="Modo de entrada",
-            padding=10
-        )
-
-        mode_frame.pack(
-            fill="x",
-            pady=15
-        )
-
-        self.input_mode = tk.StringVar(
-            value="foreground"
-        )
-
-        ttk.Radiobutton(
-            mode_frame,
-            text="Solo cuando el juego esté enfocado",
-            variable=self.input_mode,
-            value="foreground"
-        ).pack(
-            anchor="w"
-        )
-
-        ttk.Radiobutton(
-            mode_frame,
-            text="Segundo plano (experimental)",
-            variable=self.input_mode,
-            value="background"
-        ).pack(
-            anchor="w"
-        )
-
-        # ----------------------------------------------------
+        # ====================================================
         # TECLAS
-        # ----------------------------------------------------
+        # ====================================================
 
         keys_frame = ttk.LabelFrame(
             main,
             text="Teclas",
-            padding=10
+            padding=12
         )
 
         keys_frame.pack(
+            fill="both",
+            expand=True
+        )
+
+        # ====================================================
+        # ACCIONES PRINCIPALES
+        # ====================================================
+
+        actions_frame = ttk.Frame(
+            keys_frame
+        )
+
+        actions_frame.pack(
             fill="x"
         )
 
         ttk.Label(
-            keys_frame,
-            text="Usar",
+            actions_frame,
+            text="Acciones principales",
             font=("Segoe UI", 10, "bold")
         ).grid(
             row=0,
             column=0,
-            padx=15,
-            pady=5
+            sticky="w",
+            pady=(0, 8)
         )
 
         ttk.Label(
-            keys_frame,
-            text="Tecla",
-            font=("Segoe UI", 10, "bold")
+            actions_frame,
+            text="Usar",
+            font=("Segoe UI", 9, "bold")
         ).grid(
             row=0,
             column=1,
-            padx=15,
-            pady=5
+            padx=(60, 20),
+            pady=(0, 8)
         )
 
         ttk.Label(
-            keys_frame,
+            actions_frame,
             text="Intervalo (ms)",
-            font=("Segoe UI", 10, "bold")
+            font=("Segoe UI", 9, "bold")
         ).grid(
             row=0,
             column=2,
-            padx=15,
-            pady=5
+            pady=(0, 8)
         )
 
-        # ----------------------------------------------------
-        # FILAS
-        # ----------------------------------------------------
-
-        for row, (display_name, key) in enumerate(
-            self.keys,
+        for row, (
+            display_name,
+            key
+        ) in enumerate(
+            self.action_keys,
             start=1
         ):
 
-            enabled = tk.BooleanVar(
-                value=False
+            self.create_action_row(
+                actions_frame,
+                row,
+                display_name,
+                key
             )
 
-            interval = tk.StringVar(
-                value="500"
+        # ====================================================
+        # TECLAS NUMÉRICAS
+        # ====================================================
+
+        ttk.Label(
+            keys_frame,
+            text="Teclas numéricas (1 - 10)",
+            font=("Segoe UI", 10, "bold")
+        ).pack(
+            anchor="w",
+            pady=(16, 8)
+        )
+
+        numbers_frame = ttk.Frame(
+            keys_frame
+        )
+
+        numbers_frame.pack(
+            fill="x"
+        )
+
+        # 5 columnas
+        for column in range(5):
+
+            numbers_frame.columnconfigure(
+                column,
+                weight=1
             )
 
-            self.enabled_vars[key] = enabled
-            self.interval_vars[key] = interval
+        # 2 filas de 5
+        for index, (
+            display_name,
+            key
+        ) in enumerate(
+            self.number_keys
+        ):
 
-            # Checkbox
+            row = index // 5
+            column = index % 5
 
-            checkbox = ttk.Checkbutton(
-                keys_frame,
-                variable=enabled,
-                command=lambda k=key:
-                    self.update_entry_state(k)
+            self.create_key_control(
+                numbers_frame,
+                row,
+                column,
+                display_name,
+                key
             )
 
-            checkbox.grid(
-                row=row,
-                column=0,
-                pady=4
+        # ====================================================
+        # TECLAS F1 - F10
+        # ====================================================
+
+        ttk.Label(
+            keys_frame,
+            text="Teclas de función (F1 - F10)",
+            font=("Segoe UI", 10, "bold")
+        ).pack(
+            anchor="w",
+            pady=(16, 8)
+        )
+
+        function_frame = ttk.Frame(
+            keys_frame
+        )
+
+        function_frame.pack(
+            fill="x"
+        )
+
+        # 5 columnas
+        for column in range(5):
+
+            function_frame.columnconfigure(
+                column,
+                weight=1
             )
 
-            # Nombre tecla
+        # 2 filas de 5
+        for index, (
+            display_name,
+            key
+        ) in enumerate(
+            self.function_keys
+        ):
 
-            ttk.Label(
-                keys_frame,
-                text=display_name
-            ).grid(
-                row=row,
-                column=1,
-                pady=4
+            row = index // 5
+            column = index % 5
+
+            self.create_key_control(
+                function_frame,
+                row,
+                column,
+                display_name,
+                key
             )
 
-            # Intervalo
-
-            entry = ttk.Entry(
-                keys_frame,
-                textvariable=interval,
-                width=14,
-                justify="center"
-            )
-
-            entry.grid(
-                row=row,
-                column=2,
-                pady=4
-            )
-
-            self.interval_entries[key] = entry
-
-            entry.config(
-                state="disabled"
-            )
-
-        # ----------------------------------------------------
+        # ====================================================
         # BOTONES
-        # ----------------------------------------------------
+        # ====================================================
 
-        button_frame = ttk.Frame(main)
+        button_frame = ttk.Frame(
+            main
+        )
 
         button_frame.pack(
-            pady=20
+            pady=(15, 0)
         )
 
         self.start_button = ttk.Button(
             button_frame,
             text="▶ INICIAR",
-            command=self.start_bot
+            command=self.start_bot,
+            width=18
         )
 
         self.start_button.grid(
             row=0,
             column=0,
-            padx=10,
-            ipadx=15,
-            ipady=5
+            padx=5,
+            ipady=4
         )
 
         self.stop_button = ttk.Button(
             button_frame,
             text="■ DETENER",
             command=self.stop_bot,
-            state="disabled"
+            state="disabled",
+            width=18
         )
 
         self.stop_button.grid(
             row=0,
             column=1,
-            padx=10,
-            ipadx=15,
-            ipady=5
+            padx=5,
+            ipady=4
         )
 
-        # ----------------------------------------------------
-        # ESTADO
-        # ----------------------------------------------------
+    # ========================================================
+    # CREAR ACCIÓN PRINCIPAL
+    # ========================================================
 
-        self.status_label = ttk.Label(
-            main,
-            text="● Detenido",
-            font=("Segoe UI", 11)
+    def create_action_row(
+        self,
+        parent,
+        row,
+        display_name,
+        key
+    ):
+
+        enabled = tk.BooleanVar(
+            value=False
         )
 
-        self.status_label.pack()
-
-        self.target_label = ttk.Label(
-            main,
-            text="Objetivo: ninguno"
+        interval = tk.StringVar(
+            value="500"
         )
 
-        self.target_label.pack(
-            pady=5
+        self.enabled_vars[
+            key
+        ] = enabled
+
+        self.interval_vars[
+            key
+        ] = interval
+
+        # Nombre
+        ttk.Label(
+            parent,
+            text=display_name,
+            width=25
+        ).grid(
+            row=row,
+            column=0,
+            sticky="w",
+            pady=4
         )
+
+        # Checkbox
+        checkbox = ttk.Checkbutton(
+            parent,
+            variable=enabled,
+            command=lambda k=key:
+                self.update_entry_state(k)
+        )
+
+        checkbox.grid(
+            row=row,
+            column=1,
+            padx=(60, 20)
+        )
+
+        # Intervalo
+        entry = ttk.Spinbox(
+            parent,
+            from_=1,
+            to=999999,
+            textvariable=interval,
+            width=12,
+            justify="center",
+            state="disabled"
+        )
+
+        entry.grid(
+            row=row,
+            column=2,
+            pady=4
+        )
+
+        self.interval_entries[
+            key
+        ] = entry
+
+    # ========================================================
+    # CREAR TECLA NUMÉRICA / FUNCIÓN
+    # ========================================================
+
+    def create_key_control(
+        self,
+        parent,
+        row,
+        column,
+        display_name,
+        key
+    ):
+
+        enabled = tk.BooleanVar(
+            value=False
+        )
+
+        interval = tk.StringVar(
+            value="500"
+        )
+
+        self.enabled_vars[
+            key
+        ] = enabled
+
+        self.interval_vars[
+            key
+        ] = interval
+
+        # Contenedor de cada tecla
+        item_frame = ttk.Frame(
+            parent
+        )
+
+        item_frame.grid(
+            row=row,
+            column=column,
+            sticky="w",
+            padx=(0, 15),
+            pady=6
+        )
+
+        # Nombre
+        ttk.Label(
+            item_frame,
+            text=display_name,
+            width=6
+        ).grid(
+            row=0,
+            column=0
+        )
+
+        # Checkbox
+        checkbox = ttk.Checkbutton(
+            item_frame,
+            variable=enabled,
+            command=lambda k=key:
+                self.update_entry_state(k)
+        )
+
+        checkbox.grid(
+            row=0,
+            column=1,
+            padx=(0, 5)
+        )
+
+        # Intervalo
+        entry = ttk.Spinbox(
+            item_frame,
+            from_=1,
+            to=999999,
+            textvariable=interval,
+            width=7,
+            justify="center",
+            state="disabled"
+        )
+
+        entry.grid(
+            row=0,
+            column=2
+        )
+
+        # ms
+        ttk.Label(
+            item_frame,
+            text="ms"
+        ).grid(
+            row=0,
+            column=3,
+            padx=(4, 0)
+        )
+
+        self.interval_entries[
+            key
+        ] = entry
 
     # ========================================================
     # CHECKBOX
     # ========================================================
 
-    def update_entry_state(self, key):
+    def update_entry_state(
+        self,
+        key
+    ):
 
-        entry = self.interval_entries[key]
+        entry = (
+            self.interval_entries[
+                key
+            ]
+        )
 
-        if self.enabled_vars[key].get():
+        if self.enabled_vars[
+            key
+        ].get():
 
             entry.config(
                 state="normal"
@@ -368,8 +616,10 @@ class KeyPresserGUI:
 
         items = []
 
-        # Pedimos los procesos al motor.
-        processes = self.engine.get_processes()
+        # Obtener procesos desde engine
+        processes = (
+            self.engine.get_processes()
+        )
 
         for name, pid in processes:
 
@@ -377,17 +627,27 @@ class KeyPresserGUI:
                 f"{name}  |  PID {pid}"
             )
 
-            items.append(item)
+            items.append(
+                item
+            )
 
-            self.process_map[item] = pid
+            self.process_map[
+                item
+            ] = pid
 
-        self.process_combo["values"] = items
+        # Actualizar combobox
+        self.process_combo[
+            "values"
+        ] = items
 
         # ----------------------------------------------------
-        # Mantener selección anterior
+        # MANTENER SELECCIÓN
         # ----------------------------------------------------
 
-        if previous_selection in self.process_map:
+        if (
+            previous_selection
+            in self.process_map
+        ):
 
             self.process_combo.set(
                 previous_selection
@@ -396,10 +656,13 @@ class KeyPresserGUI:
             return
 
         # ----------------------------------------------------
-        # Buscar KathanaGame.exe
+        # BUSCAR KATHANA
         # ----------------------------------------------------
 
-        for index, (name, pid) in enumerate(
+        for index, (
+            name,
+            pid
+        ) in enumerate(
             processes
         ):
 
@@ -415,15 +678,17 @@ class KeyPresserGUI:
                 return
 
         # ----------------------------------------------------
-        # Si no está abierto
+        # SI NO ESTÁ KATHANA
         # ----------------------------------------------------
 
         if items:
 
-            self.process_combo.current(0)
+            self.process_combo.current(
+                0
+            )
 
     # ========================================================
-    # LEER TECLAS
+    # OBTENER TECLAS SELECCIONADAS
     # ========================================================
 
     def get_selected_keys(self):
@@ -432,13 +697,20 @@ class KeyPresserGUI:
 
         for _, key in self.keys:
 
-            if not self.enabled_vars[key].get():
+            # Si no está marcada,
+            # ignoramos la tecla.
+            if not self.enabled_vars[
+                key
+            ].get():
+
                 continue
 
             try:
 
                 interval = int(
-                    self.interval_vars[key].get()
+                    self.interval_vars[
+                        key
+                    ].get()
                 )
 
                 if interval <= 0:
@@ -451,8 +723,11 @@ class KeyPresserGUI:
                     f"debe ser un número mayor que 0."
                 )
 
-            selected[key] = interval
+            selected[
+                key
+            ] = interval
 
+        # Debe existir al menos una.
         if not selected:
 
             raise ValueError(
@@ -466,6 +741,10 @@ class KeyPresserGUI:
     # ========================================================
 
     def start_bot(self):
+
+        # ----------------------------------------------------
+        # PROCESO
+        # ----------------------------------------------------
 
         selected_process = (
             self.process_combo.get()
@@ -514,15 +793,14 @@ class KeyPresserGUI:
             return
 
         # ----------------------------------------------------
-        # ARRANCAR MOTOR
+        # ARRANCAR ENGINE
         # ----------------------------------------------------
 
         try:
 
             self.engine.start(
                 pid=pid,
-                selected_keys=selected_keys,
-                mode=self.input_mode.get()
+                selected_keys=selected_keys
             )
 
         except RuntimeError as error:
@@ -537,7 +815,7 @@ class KeyPresserGUI:
             return
 
         # ----------------------------------------------------
-        # ACTUALIZAR GUI
+        # ACTUALIZAR INTERFAZ
         # ----------------------------------------------------
 
         self.start_button.config(
@@ -582,8 +860,11 @@ class KeyPresserGUI:
 
     def process_closed_from_engine(self):
 
-        # Esta función llega desde un hilo secundario.
-        # Tkinter debe modificarse desde el hilo principal.
+        # Esta función puede ser llamada
+        # desde un hilo del engine.
+        #
+        # Tkinter debe actualizarse desde
+        # el hilo principal.
 
         self.root.after(
             0,
@@ -614,10 +895,11 @@ class KeyPresserGUI:
             "Key Presser se ha detenido."
         )
 
+        # Actualizar lista
         self.refresh_processes()
 
     # ========================================================
-    # CERRAR
+    # CERRAR APLICACIÓN
     # ========================================================
 
     def close_app(self):
