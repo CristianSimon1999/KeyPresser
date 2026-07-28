@@ -1,7 +1,18 @@
+import platform
 import tkinter as tk
 from tkinter import ttk, messagebox
 
-from engine import KeyPresserEngine
+# Dependencias multiplataforma
+if platform.system() == "Windows":
+    from engines.windows_engine import KeyPresserEngine
+
+elif platform.system() == "Linux":
+    from engines.linux_engine import KeyPresserEngine
+
+else:
+    raise RuntimeError(
+        f"Sistema operativo no soportado: {platform.system()}"
+    )
 
 
 DEFAULT_PROCESS = "KathanaGame.exe"
